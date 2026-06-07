@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Multiplayer Tic-Tac-Toe</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --color-x: #38bdf8; /* Vibrant Blue */
+            --color-o: #f43f5e; /* Vibrant Pink/Red */
+            --color-accent: #10b981; /* Emerald Green */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-main);
+            padding: 20px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 3fr 2fr;
+            }
+            .header-wrapper {
+                grid-column: span 2;
+            }
+        }
+
+        /* Header Styling */
+        .header-wrapper {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .header-wrapper h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            background: linear-gradient(to right, var(--color-x), var(--color-o));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        /* Status Display */
+        .status-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .turn-indicator {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+        }
+
+        .badge.x-turn { background: rgba(56, 189, 248, 0.2); color: var(--color-x); }
+        .badge.o-turn { background: rgba(244, 63, 94, 0.2); color: var(--color-o); }
+
+        /* Game Board */
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            aspect-ratio: 1;
+        }
+
+        .cell {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            font-weight: 800;
+            transition: all 0.2s ease;
+            user-select: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .cell:hover:not(.occupied) {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .cell.occupied { cursor: not-allowed; }
+        .cell.x-mark { color: var(--color-x); text-shadow: 0 0 16px rgba(56, 189, 248, 0.4); }
+        .cell.o-mark { color: var(--color-o); text-shadow: 0 0 16px rgba(244, 63, 94, 0.4); }
+        
+        .cell.winning-cell {
+            background: var(--color-accent);
+            color: #ffffff;
+            text-shadow: none;
+            animation: pulse 1s infinite alternate;
+        }
+
+        /* Sidebar / History Panel */
+        .sidebar {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-height: 520px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar h2 {
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .history-log {
+            flex-grow: 1;
+            overflow-y: auto;
+            list-style: none;
+            padding-right: 4px;
+        }
+
+        .history-log::-webkit-scrollbar {
+            width: 6px;
+        }
+        .history-log::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(15, 23, 42, 0.3);
+            border-left: 4px solid var(--text-muted);
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .history-item.x-action { border-left-color: var(--color-x); }
+        .history-item.o-action { border-left-color: var(--color-o); }
+        .history-item.system-action { border-left-color: var(--color-accent); font-weight: 600; }
+
+        .history-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Controls */
+        .btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn:active { transform: translateY(1px); }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(0.96); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-wrapper">
+        <h1>TIC-TAC-TOE</h1>
+        <p style="color: var(--text-muted)">A premium local multiplayer showdown</p>
+    </div>
+
+    <div class="board-container">
+        <div class="status-panel">
+            <div class="turn-indicator" id="turnIndicator">
+                Turn: <span id="turnBadge" class="badge x-turn">Player X</span>
+            </div>
+            <button class="btn" id="resetBtn">Reset Match</button>
+        </div>
+
+        <div class="board" id="board">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h2>Live Game History</h2>
+        <ul class="history-log" id="historyLog">
+            </ul>
+    </div>
+</div>
+
+<script>
+    // App Architecture State
+    const gameState = {
+        board: Array(9).fill(""),
+        currentPlayer: "X",
+        isGameActive: true,
+        moveCount: 0,
+        winningConditions: [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6]             // Diagonals
+        ]
+    };
+
+    // DOM Elements
+    const boardEl = document.getElementById('board');
+    const cells = document.querySelectorAll('.cell');
+    const turnBadge = document.getElementById('turnBadge');
+    const resetBtn = document.getElementById('resetBtn');
+    const historyLog = document.getElementById('historyLog');
+
+    // Core Logic Functions
+    function initGame() {
+        boardEl.addEventListener('click', handleCellClick);
+        resetBtn.addEventListener('click', resetMatch);
+        logAction("System", "Match Started! Player X goes first.", "system-action");
+    }
+
+    function handleCellClick(e) {
+        const clickedCell = e.target;
+        if (!clickedCell.classList.contains('cell')) return;
+
+        const cellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+        // Guard clauses for complex state state locks
+        if (gameState.board[cellIndex] !== "" || !gameState.isGameActive) {
+            return;
+        }
+
+        executeMove(clickedCell, cellIndex);
+        evaluateState();
+    }
+
+    function executeMove(cell, index) {
+        // Update State Memory
+        gameState.board[index] = gameState.currentPlayer;
+        gameState.moveCount++;
+        
+        // Update UI View
+        cell.textContent = gameState.currentPlayer;
+        cell.classList.add('occupied', `${gameState.currentPlayer.toLowerCase()}-mark`);
+        
+        // Log action
+        const row = Math.floor(index / 3) + 1;
+        const col = (index % 3) + 1;
+        logAction(gameState.currentPlayer, `Placed on Row ${row}, Col ${col}`, `${gameState.currentPlayer.toLowerCase()}-action`);
+    }
+
+    function evaluateState() {
+        let roundWon = false;
+        let winningLine = [];
+
+        // Scan win conditions against complex map matrix
+        for (let i = 0; i < gameState.winningConditions.length; i++) {
+            const winCondition = gameState.winningConditions[i];
+            let a = gameState.board[winCondition[0]];
+            let b = gameState.board[winCondition[1]];
+            let c = gameState.board[winCondition[2]];
+            
+            if (a === '' || b === '' || c === '') continue;
+            
+            if (a === b && b === c) {
+                roundWon = true;
+                winningLine = winCondition;
+                break;
+            }
+        }
+
+        if (roundWon) {
+            highlightWinners(winningLine);
+            turnBadge.textContent = `Player ${gameState.currentPlayer} Wins!`;
+            turnBadge.className = `badge ${gameState.currentPlayer.toLowerCase()}-turn`;
+            logAction("System", `Game Over: Player ${gameState.currentPlayer} won the match! 🎉`, "system-action");
+            gameState.isGameActive = false;
+            return;
+        }
+
+        // Check for Tie Condition
+        if (gameState.moveCount === 9) {
+            turnBadge.textContent = "It's a Draw / Tie!";
+            turnBadge.className = "badge";
+            turnBadge.style.background = "rgba(255,255,255,0.15)";
+            turnBadge.style.color = "var(--text-main)";
+            logAction("System", "Game Over: Stalemate / Draw reached.", "system-action");
+            gameState.isGameActive = false;
+            return;
+        }
+
+        // Shift turn state
+        gameState.currentPlayer = gameState.currentPlayer === "X" ? "O" : "X";
+        turnBadge.textContent = `Player ${gameState.currentPlayer}`;
+        turnBadge.className = `badge ${gameState.currentPlayer.toLowerCase()}-turn`;
+    }
+
+    function highlightWinners(line) {
+        line.forEach(index => {
+            cells[index].classList.add('winning-cell');
+        });
+    }
+
+    function logAction(player, message, cssClass) {
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const entry = document.createElement('li');
+        entry.className = `history-item ${cssClass}`;
+        entry.innerHTML = `
+            <span><strong>${player}:</strong> ${message}</span>
+            <span class="history-time">${timestamp}</span>
+        `;
+        historyLog.insertBefore(entry, historyLog.firstChild);
+    }
+
+    function resetMatch() {
+        // Clear State Memory
+        gameState.board = Array(9).fill("");
+        gameState.currentPlayer = "X";
+        gameState.isGameActive = true;
+        gameState.moveCount = 0;
+
+        // Clear View
+        cells.forEach(cell => {
+            cell.textContent = "";
+            cell.className = "cell";
+        });
+        
+        turnBadge.textContent = "Player X";
+        turnBadge.className = "badge x-turn";
+        turnBadge.style.background = "";
+        turnBadge.style.color = "";
+
+        logAction("System", "Match reset. Fresh deck initialized.", "system-action");
+    }
+
+    // Initialize application
+    initGame();
+</script>
+</body>
+</html>
